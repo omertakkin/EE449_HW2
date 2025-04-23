@@ -53,23 +53,18 @@ class DQNAgent:
             case 1:
                 self.policy_net = QNetwork_1(state_dim, action_dim)
                 self.target_net = QNetwork_1(state_dim, action_dim)
-                print("You have been selected Net No: 1")
             case 2:
                 self.policy_net = QNetwork_2(state_dim, action_dim)
                 self.target_net = QNetwork_2(state_dim, action_dim)
-                print("You have been selected Net No: 2")
             case 3:
                 self.policy_net = QNetwork_3(state_dim, action_dim)
                 self.target_net = QNetwork_3(state_dim, action_dim)
-                print("You have been selected Net No: 3")
             case 4:
                 self.policy_net = QNetwork_4(state_dim, action_dim)
                 self.target_net = QNetwork_4(state_dim, action_dim)
-                print("You have been selected Net No: 4")
             case 5:
                 self.policy_net = QNetwork_5(state_dim, action_dim)
                 self.target_net = QNetwork_5(state_dim, action_dim)
-                print("You have been selected Net No: 5")
             case _:
                 print("Error on Net No: missing")
 
@@ -130,6 +125,8 @@ def run_experiment(config, output_path):
     env = gym.make("LunarLander-v3")
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
+
+    #print(f"lr={config['lr']} | g={config['gamma']} | ed={config['epsilon_decay']} | f={config['target_update_freq']} | NN={config['net_no']}")
     
     agent = DQNAgent(state_dim, 
                      action_dim, 
@@ -191,13 +188,27 @@ def run_experiment(config, output_path):
 
 # Example usage
 if __name__ == "__main__":
-    # Define a sample configuration
-    config = {
+    base_config = {
         'lr': 1e-3,
         'gamma': 0.99,
         'epsilon_decay': 0.995,
         'target_update_freq': 10,
         'net_no': 3,
-        'num_episodes': 1000
+        'num_episodes': 5000
     }
-    run_experiment(config, 'part2/results/results_default.json')
+
+    param_grid = {
+        'lr': [1e-4, 1e-3, 5e-3],
+        'gamma': [0.98, 0.99, 0.999],
+        'epsilon_decay': [0.98, 0.99, 0.995],
+        'target_update_freq': [1, 10, 50],
+        'net_no': [1, 2, 3, 4, 5]
+    }
+
+    for param, values in param_grid.items():
+        for val in values:
+            config = base_config.copy()
+            config[param] = val
+            save_path = f'part2/results/{param}_{val}.json'
+            print(f"Running experiment with {param}={val}")
+            run_experiment(config, save_path)
