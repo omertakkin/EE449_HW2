@@ -5,23 +5,9 @@ from collections import deque
 import random
 import json
 
-# Q-Network definition
-class QNetwork(torch.nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim1=128, hidden_dim2=128):
-        super(QNetwork, self).__init__()
-        # first hidden layer
-        self.fc1 = torch.nn.Linear(state_dim, hidden_dim1)
-        # second hidden layer
-        self.fc2 = torch.nn.Linear(hidden_dim1, hidden_dim2)
-        # output layer to Q‑values
-        self.fc3 = torch.nn.Linear(hidden_dim2, action_dim)
+from models import QNetwork_1, QNetwork_2, QNetwork_3, QNetwork_4, QNetwork_5
 
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        return self.fc3(x)
-
-# Replay memory for experience replay
+#  Define a replay memory to store experiences:
 class ReplayMemory:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -38,11 +24,12 @@ class ReplayMemory:
     def __len__(self):
         return len(self.buffer)
 
-# DQN Agent encapsulating training and action selection
+#  Define the DQN Agent encapsulating the networks, memory, and training procedure:
 class DQNAgent:
     def __init__(self, 
                  state_dim, 
                  action_dim,
+                 Net_No=3,
                  memory_size=50000, 
                  batch_size=64,
                  gamma=0.99, 
@@ -55,19 +42,44 @@ class DQNAgent:
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.gamma = gamma
+        self.alpha = alpha
         self.batch_size = batch_size
         self.epsilon = epsilon_start
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
         self.memory = ReplayMemory(memory_size)
-        self.policy_net = QNetwork(state_dim, action_dim)
-        self.target_net = QNetwork(state_dim, action_dim)
+
+        match Net_No:
+            case 1:
+                self.policy_net = QNetwork_1(state_dim, action_dim)
+                self.target_net = QNetwork_1(state_dim, action_dim)
+                print("You have been selected Net No: 1")
+            case 2:
+                self.policy_net = QNetwork_2(state_dim, action_dim)
+                self.target_net = QNetwork_2(state_dim, action_dim)
+                print("You have been selected Net No: 2")
+            case 3:
+                self.policy_net = QNetwork_3(state_dim, action_dim)
+                self.target_net = QNetwork_3(state_dim, action_dim)
+                print("You have been selected Net No: 3")
+            case 4:
+                self.policy_net = QNetwork_4(state_dim, action_dim)
+                self.target_net = QNetwork_4(state_dim, action_dim)
+                print("You have been selected Net No: 4")
+            case 5:
+                self.policy_net = QNetwork_5(state_dim, action_dim)
+                self.target_net = QNetwork_5(state_dim, action_dim)
+                print("You have been selected Net No: 5")
+            case _:
+                print("Error on Net No: missing")
+
+        
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=alpha)
         self.target_update_freq = target_update_freq
-        self.solved_score = 200.0
-        self.solved_window = 100
+        self.solved_score = 200.0       #target average reward for ’solved’
+        self.solved_window = 100        #number of episodes to average for solved check
 
     def get_action(self, state):
         # Select an action for the given state using epsilon-greedy policy.
@@ -89,49 +101,56 @@ class DQNAgent:
         rewards = torch.tensor(np.array([exp[2] for exp in batch]), dtype=torch.float32).unsqueeze(1)
         next_states = torch.tensor(np.array([exp[3] for exp in batch]), dtype=torch.float32)
         dones = torch.tensor(np.array([exp[4] for exp in batch]), dtype=torch.float32).unsqueeze(1)
-
-        # Current Q values
-        curr_q = self.policy_net(states).gather(1, actions)
-        # Next Q values from target network
-        next_q = self.target_net(next_states).max(1)[0].detach().unsqueeze(1)
+        curr_Q = self.policy_net(states).gather(1, actions)
+        next_Q = self.target_net(next_states).max(1)[0].detach().unsqueeze(1)
+        
         # Compute target Q
-        target_q = rewards + (1 - dones) * (self.gamma * next_q)
+        target_Q = rewards + (1 - dones) * (self.gamma * next_Q)
+        #target_Q = curr_Q + self.alpha * (rewards + self.gamma * next_Q - curr_Q)
 
         # Compute loss
-        loss = torch.nn.functional.mse_loss(curr_q, target_q)
+        loss = torch.nn.functional.mse_loss(curr_Q, target_Q)
+        
         # Optimize
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
     def update_target(self):
-        # Sync target network parameters
+        # Update target network to match policy network.
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
     def decay_epsilon(self):
-        # Decay epsilon after each episode
+        # Decay exploration rate after each episode.
         self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
-# Main training loop for a single experiment
 
 def run_experiment(config, output_path):
-    # config: dict with hyperparameters
+    # Main training loop for a single experiment
     env = gym.make("LunarLander-v3")
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
-    agent = DQNAgent(state_dim, action_dim)
-    num_episodes = 10000
+    
+    agent = DQNAgent(state_dim, 
+                     action_dim, 
+                     Net_No=config['net_no'],
+                     gamma=config['gamma'],
+                     epsilon_decay=config['epsilon_decay'],
+                     target_update_freq=config['target_update_freq'],
+                    )
+    num_episodes = config['num_episodes']
 
     rewards_history = []
     avg_scores = []
     solved_episode = None
     scores_window = deque(maxlen=agent.solved_window)
 
-    for ep in range(1, num_episodes + 1):
+    for episode in range(1, num_episodes + 1):
         state, _ = env.reset()
         total_reward = 0
         done = False
-        while not done:
+
+        for t in range(1000): # limit max steps per episode to avoid long runs
             action = agent.get_action(state)
             next_state, reward, terminated, truncated, _ = env.step(action)
             done = terminated or truncated
@@ -139,6 +158,9 @@ def run_experiment(config, output_path):
             agent.train_step()
             state = next_state
             total_reward += reward
+            if done:
+                break
+            
         # Episode end
         rewards_history.append(total_reward)
         scores_window.append(total_reward)
@@ -147,14 +169,14 @@ def run_experiment(config, output_path):
         avg_scores.append(avg)
         # Check solved
         if solved_episode is None and len(scores_window) == agent.solved_window and avg >= agent.solved_score:
-            solved_episode = ep
+            solved_episode = episode
         # Epsilon decay
         agent.decay_epsilon()
         # Update target network
-        if ep % agent.target_update_freq == 0:
+        if episode % agent.target_update_freq == 0:
             agent.update_target()
-        print(f"Episode {ep} | Reward: {total_reward:.2f} | Avg: {avg:.2f} | Epsilon: {agent.epsilon:.3f}")
-
+        print(f"Episode {episode} | Reward: {total_reward:.2f} | Avg: {avg:.2f} | Epsilon: {agent.epsilon:.3f}")
+    
     env.close()
     # Save results
     results = {
@@ -175,8 +197,7 @@ if __name__ == "__main__":
         'gamma': 0.99,
         'epsilon_decay': 0.995,
         'target_update_freq': 10,
-        'num_episodes': 5000,
-        'batch_size': 64,
-        'memory_size': 50000
+        'net_no': 3,
+        'num_episodes': 1000
     }
-    run_experiment(config, 'results_default.json')
+    run_experiment(config, 'part2/results/results_default.json')
