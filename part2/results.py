@@ -1,65 +1,75 @@
+# result.py
+# Generates learning-curve subplots and solved-episode bar chart for DQN experiments using utils.py
+
 import sys
 import os
 sys.path.append(os.path.abspath('_given'))
-from utils import plot_learning_curves, plot_solved_episodes # type: ignore # your utility plotting functions
-import glob
+from utils import plot_learning_curves, plot_solved_episodes
 
 
-# Define experiment groups and corresponding file patterns
-experiment_groups = {
-    'learning_rate': {
-        'pattern': 'results_lr_*.json',
-        'labels': ['lr=1e-4', 'lr=1e-3', 'lr=5e-3'],
-        'output_curve': 'learning_curves_lr.png',
-        'output_solved': 'solved_episodes_lr.png'
-    },
-    'discount_factor': {
-        'pattern': 'results_gamma_*.json',
-        'labels': ['gamma=0.98', 'gamma=0.99', 'gamma=0.999'],
-        'output_curve': 'learning_curves_gamma.png',
-        'output_solved': 'solved_episodes_gamma.png'
-    },
-    'epsilon_decay': {
-        'pattern': 'results_decay_*.json',
-        'labels': ['decay=0.98', 'decay=0.99', 'decay=0.995'],
-        'output_curve': 'learning_curves_decay.png',
-        'output_solved': 'solved_episodes_decay.png'
-    },
-    'target_update_freq': {
-        'pattern': 'results_update_*.json',
-        'labels': ['freq=1', 'freq=10', 'freq=50'],
-        'output_curve': 'learning_curves_update.png',
-        'output_solved': 'solved_episodes_update.png'
-    },
-    'architecture': {
-        'pattern': 'results_net_*.json',
-        'labels': ['128-64-64', '128-128', '256-256'],
-        'output_curve': 'learning_curves_arch.png',
-        'output_solved': 'solved_episodes_arch.png'
+def main():
+    # Directory containing experiment JSON results
+    base_dir = os.path.join(os.path.dirname(__file__), 'results')
+
+    # Hyperparameter experiments and their values (must match JSON filenames)
+    experiments = {
+        'lr': [0.0001, 0.001, 0.005],
+        'gamma': [0.98, 0.99, 0.999],
+        'epsilon_decay': [0.98, 0.99, 0.995],
+        'target_update_freq': [1, 10, 50],
+        'net_no': [1, 2, 3, 4, 5]
     }
-}
 
-if __name__ == '__main__':
-    for name, cfg in experiment_groups.items():
-        # Discover matching result files
-        json_paths = sorted(glob.glob(cfg['pattern']))
+    # Plot learning curves for each hyperparameter
+    for param, values in experiments.items():
+        # Construct list of JSON paths for this parameter
+        json_paths = []
+        labels = []
+        for val in values:
+            # Format value to match filename
+            val_str = str(val)
+            json_file = f"{param}_{val_str}.json"
+            path = os.path.join(base_dir, json_file)
+            if os.path.isfile(path):
+                json_paths.append(path)
+                labels.append(str(val))
+            else:
+                print(f"Warning: missing result file {path}")
+
         if not json_paths:
-            print(f"No result files found for {name} (pattern {cfg['pattern']})")
+            print(f"No data for parameter '{param}', skipping.")
             continue
 
-        print(f"Plotting group: {name}")
-        # Plot learning curves
+        # Output image filename
+        out_png = f"part2/results_fig/learning_curves_{param}.png"
+        # Generate and save figure
         plot_learning_curves(
-            json_paths,
-            labels=cfg['labels'],
-            output_file=cfg['output_curve']
+            json_paths=json_paths,
+            labels=labels,
+            output_file=out_png
         )
-        print(f"  Saved learning curves to {cfg['output_curve']}")
+        print(f"Saved learning curves for '{param}' at: {out_png}")
 
-        # Plot solved-episodes bar chart
-        plot_solved_episodes(
-            json_paths,
-            labels=cfg['labels'],
-            output_file=cfg['output_solved']
-        )
-        print(f"  Saved solved-episode chart to {cfg['output_solved']}\n")
+    # Plot bar chart of solved episodes for all experiments
+    # Gather all JSON result files
+    all_json = []
+    for fname in os.listdir(base_dir):
+        if fname.endswith('.json'):
+            all_json.append(os.path.join(base_dir, fname))
+
+    if not all_json:
+        print("No JSON result files found, skipping solved-episode bar chart.")
+        return
+
+    # Output bar chart filename
+    out_bar = os.path.join(base_dir, 'solved_episodes.png')
+    # Generate and save bar chart
+    plot_solved_episodes(
+        json_paths=all_json,
+        output_file=out_bar
+    )
+    print(f"Saved solved episodes bar chart at: {out_bar}")
+
+
+if __name__ == '__main__':
+    main()
