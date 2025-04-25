@@ -60,12 +60,19 @@ def main():
     if not all_json:
         print("No JSON result files found, skipping solved-episode bar chart.")
         return
+    
+    all_labels = [
+        os.path.splitext(os.path.basename(path))[0]
+        for path in all_json
+    ]
 
     # Output bar chart filename
-    out_bar = os.path.join(base_dir, 'solved_episodes.png')
+    out_bar = 'part2/results_fig/solved_episodes.png'
+
     # Generate and save bar chart
     plot_solved_episodes(
         json_paths=all_json,
+        labels = all_labels,
         output_file=out_bar
     )
     print(f"Saved solved episodes bar chart at: {out_bar}")

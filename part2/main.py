@@ -194,7 +194,7 @@ if __name__ == "__main__":
         'epsilon_decay': 0.995,
         'target_update_freq': 10,
         'net_no': 3,
-        'num_episodes': 100
+        'num_episodes': 5000
     }
 
     param_grid = {
