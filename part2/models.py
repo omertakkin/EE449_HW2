@@ -1,6 +1,5 @@
 import torch
 
-
 # Q-Network FC-128, ReLU
 class QNetwork_1(torch.nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=128):

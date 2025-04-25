@@ -1,6 +1,3 @@
-# result.py
-# Generates learning-curve subplots and solved-episode bar chart for DQN experiments using utils.py
-
 import sys
 import os
 sys.path.append(os.path.abspath('_given'))
