@@ -4,7 +4,7 @@
 import sys
 import os
 sys.path.append(os.path.abspath('_given'))
-from utils import plot_learning_curves, plot_solved_episodes
+from utils import plot_learning_curves, plot_solved_episodes # type: ignore
 
 
 def main():
