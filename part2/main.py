@@ -101,7 +101,7 @@ class DQNAgent:
         
         # Compute target Q
         target_Q = rewards + (1 - dones) * (self.gamma * next_Q)
-        #target_Q = curr_Q + self.alpha * (rewards + self.gamma * next_Q - curr_Q)
+        #target_Q = self.alpha * (rewards + self.gamma * next_Q - curr_Q)
 
         # Compute loss
         loss = torch.nn.functional.mse_loss(curr_Q, target_Q)
